@@ -28,6 +28,67 @@ def upload_file():
         # pygame.mixer.music.load(path)
         # pygame.mixer.music.play()
 
+event = threading.Event()  # 註冊錄音事件
+event2 = threading.Event()  # 註冊停止錄音事件
+
+
+# 錄製
+def recording():
+    chunk = 1024
+    sample_format = pyaudio.paInt16
+    channels = 2
+    fs = 44100
+    seconds = 5
+    global run, name, ok
+    while True:
+        event.wait()
+        event.clear()
+        run = True
+        print('start recording...')
+        p = pyaudio.PyAudio()
+        stream = p.open(format=sample_format,
+                        channels=channels,
+                        rate=fs,
+                        frames_per_buffer=chunk,
+                        input=True)
+        frames = []
+        while run:
+            data = stream.read(chunk)
+            frames.append(data)
+        print('stop recording')
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
+        event2.wait()
+        event2.clear()
+        # 儲存
+        if ok:
+            wf = wave.open(f'{name}.wav', 'wb')
+            wf.setnchannels(channels)
+            wf.setsampwidth(p.get_sample_size(sample_format))
+            wf.setframerate(fs)
+            wf.writeframes(b''.join(frames))
+            wf.close()
+        else:
+            pass
+
+
+record = threading.Thread(target=recording)
+record.start()
+
+# use this to start recording
+def start_recording():
+    print('recording...')
+    event.set()  # 觸發錄音開始事件
+
+# use this to stop recording, will ask a filename to be save the record result
+def stop_recording():
+    global run, name, ok
+    run = False
+    name = filedialog.asksaveasfilename()
+    if name != '':
+        ok = True
+    event2.set()    # 觸發錄音停止事件
 
 # 播放
 def play_file():
